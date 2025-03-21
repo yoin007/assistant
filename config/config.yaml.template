@@ -1,0 +1,44 @@
+#-------------------系统配置-------------------
+wcf_http_url: http://ip:port/
+admin: admin# 管理员wxid, 撤回的消息会转发给管理员
+wcf_admin: admin
+wcf_pwd: pwd
+admin_list:
+ - admin
+ - wxid
+queue_timer: 3
+queue_timer_random:
+ - 1
+ - 4
+admin_chatroom:
+ - aa@chatroom # 
+gk_remind:
+ - 55@chatroom
+
+#-------------------函数配置-------------------
+auto_new_friend: True
+new_friend_tips: '您好，我已经通过了您的好友请求，请将您的姓名告知，以便联系。'
+#-------------------apikey配置-------------------
+joke_key: aa
+weather_key: aa
+zhipu_key: aa
+deepseek_key: aa
+#-------------------function配置-------------------
+#-------------------lesson配置
+lesson_admin:
+ - admin
+lesson_dir: C:\Users\administrator\Desktop\lesson
+
+datashow_info: "课表已更新"
+
+park_admin: 
+ - admin
+
+park_db:
+  host: 'ip'
+  user: 'admin'
+  password: 'pwd'
+  database: 'db'
+
+invite_rooms:
+ assistant: 5@chatroom
