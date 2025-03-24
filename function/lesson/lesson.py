@@ -9,7 +9,7 @@ import re
 import shutil
 import time
 import uuid
-import concurrent.futures
+# import concurrent.futures
 from datetime import datetime, timedelta
 from html2image import Html2Image
 
@@ -1141,145 +1141,150 @@ async def update_schedule_all(record: any):
     """
     更新所有人的课表
     """
-    content = record.content
-    l = Lesson()
-    contacts = l.contacts
-    class_leaders = l.class_template[['class_name', 'class_en']]
-    leaders_dict = dict(
-        zip(class_leaders['class_name'], class_leaders['class_en']))
-    teacher_name = re.match(r'^(.+?)\s*的课表$', content).group(1)
-
-    def check_image_size(image_path, min_size=5*1024):  # 5KB
-        """检查图片大小是否小于最小值"""
-        return os.path.getsize(image_path) < min_size
-
-    def process_teacher_schedule(teacher_name, wxid, week_next=False):
-        try:
-            df = l.get_teacher_schedule(teacher_name, week_next=week_next)
-            if df.empty:
-                for a in l.admin:
-                    send_remind(f'{teacher_name}的课表不存在', a)
-            else:
-                schedule_file = l.current_schedule_file(week_next=week_next)
-                df_png = l.df_to_png(
-                    df, f'{wxid}.png', title=f'{teacher_name}{"下周" if week_next else ""}的课表')[0]
-                if check_image_size(df_png):
-                    print(f'老师 {teacher_name} 的课表图片为空，正在重新生成...')
-                    df_png = l.df_to_png(
-                        df, f'{wxid}.png', title=f'{teacher_name}{"下周" if week_next else ""}的课表')[0]
-                send_image(df_png, wxid, 'lesson')
-                send_file(schedule_file, wxid, 'lesson')
-        except Exception as e:
-            print(f'处理老师 {teacher_name} 的课表时发生错误: {e}')
-
-    def process_class_schedule(class_name, v, week_next=False):
-        try:
-            class_df = l.get_class_schedule(class_name, week_next=week_next)
-            title = f'{class_name}{"下周" if week_next else ""}的课表'
-            if not class_df.empty:
-                class_pic = l.df_to_png(
-                    class_df, f'class_{v}.png', title=title)[0]
-                if check_image_size(class_pic):
-                    print(f'班级 {class_name} 的课表图片为空，正在重新生成...')
-                    class_pic = l.df_to_png(
-                        class_df, f'class_{v}.png', title=title)[0]
-                if class_pic:
-                    wxids = l.get_wxids(class_name)
-                    for wxid in wxids:
-                        send_image(class_pic, wxid, 'lesson')
-        except Exception as e:
-            print(f'处理班级 {class_name} 的课表时发生错误: {e}')
-
-    if teacher_name == '更新所有人':
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            # 并行处理所有老师的课表
-            future_to_teacher = {executor.submit(
-                process_teacher_schedule, k, v, False): k for k, v in contacts.items()}
-            for future in concurrent.futures.as_completed(future_to_teacher):
-                teacher_name = future_to_teacher[future]
-                try:
-                    future.result()
-                except Exception as exc:
-                    print(f'老师 {teacher_name} 生成课表图片时发生异常: {exc}')
-
-            # 并行处理所有班级的课表
-            future_to_class = {executor.submit(
-                process_class_schedule, k, v, False): k for k, v in leaders_dict.items()}
-            for future in concurrent.futures.as_completed(future_to_class):
-                class_name = future_to_class[future]
-                try:
-                    future.result()
-                except Exception as exc:
-                    print(f'班级 {class_name} 生成课表图片时发生异常: {exc}')
-    elif teacher_name == '更新下周':
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            # 并行处理所有老师的下周课表
-            future_to_teacher_next = {executor.submit(
-                process_teacher_schedule, k, v, True): k for k, v in contacts.items()}
-            for future in concurrent.futures.as_completed(future_to_teacher_next):
-                teacher_name = future_to_teacher_next[future]
-                try:
-                    future.result()
-                except Exception as exc:
-                    print(f'老师 {teacher_name} 生成下周课表图片时发生异常: {exc}')
-
-            # 并行处理所有班级的下周课表
-            future_to_class_next = {executor.submit(
-                process_class_schedule, k, v, True): k for k, v in leaders_dict.items()}
-            for future in concurrent.futures.as_completed(future_to_class_next):
-                class_name = future_to_class_next[future]
-                try:
-                    future.result()
-                except Exception as exc:
-                    print(f'班级 {class_name} 生成下周课表图片时发生异常: {exc}')
     # content = record.content
     # l = Lesson()
     # contacts = l.contacts
     # class_leaders = l.class_template[['class_name', 'class_en']]
-    # leaders_dict = dict(zip(class_leaders['class_name'], class_leaders['class_en']))
+    # leaders_dict = dict(
+    #     zip(class_leaders['class_name'], class_leaders['class_en']))
     # teacher_name = re.match(r'^(.+?)\s*的课表$', content).group(1)
+
+    # # 生产课表失败的 教师或班级
+    # err = ""
+
+    # def check_image_size(image_path, min_size=5*1024):  # 5KB
+    #     """检查图片大小是否小于最小值"""
+    #     return os.path.getsize(image_path) < min_size
+
+    # def process_teacher_schedule(teacher_name, wxid, week_next=False, err=err):
+    #     try:
+    #         df = l.get_teacher_schedule(teacher_name, week_next=week_next)
+    #         if df.empty:
+    #             for a in l.admin:
+    #                 send_remind(f'{teacher_name}的课表不存在', a)
+    #         else:
+    #             schedule_file = l.current_schedule_file(week_next=week_next)
+    #             df_png = l.df_to_png(
+    #                 df, f'{wxid}.png', title=f'{teacher_name}{"下周" if week_next else ""}的课表')[0]
+    #             if check_image_size(df_png):
+    #                 print(f'老师 {teacher_name} 的课表图片为空，正在重新生成...')
+    #                 df_png = l.df_to_png(
+    #                     df, f'{wxid}.png', title=f'{teacher_name}{"下周" if week_next else ""}的课表')[0]
+    #             send_image(df_png, wxid, 'lesson')
+    #             send_file(schedule_file, wxid, 'lesson')
+    #     except Exception as e:
+    #         err += f'{teacher_name}-'
+    #         print(f'处理老师 {teacher_name} 的课表时发生错误: {e}')
+
+    # def process_class_schedule(class_name, v, week_next=False, err=err):
+    #     try:
+    #         class_df = l.get_class_schedule(class_name, week_next=week_next)
+    #         title = f'{class_name}{"下周" if week_next else ""}的课表'
+    #         if not class_df.empty:
+    #             class_pic = l.df_to_png(
+    #                 class_df, f'class_{v}.png', title=title)[0]
+    #             if check_image_size(class_pic):
+    #                 print(f'班级 {class_name} 的课表图片为空，正在重新生成...')
+    #                 class_pic = l.df_to_png(
+    #                     class_df, f'class_{v}.png', title=title)[0]
+    #             if class_pic:
+    #                 wxids = l.get_wxids(class_name)
+    #                 for wxid in wxids:
+    #                     send_image(class_pic, wxid, 'lesson')
+    #     except Exception as e:
+    #         err += f'{class_name}-'
+    #         print(f'处理班级 {class_name} 的课表时发生错误: {e}')
+
     # if teacher_name == '更新所有人':
-    #     # 通知所有老师
-    #     for k, v in contacts.items():
-    #         teacher_name = k
-    #         wxid = v
-    #         df = l.get_teacher_schedule(teacher_name)
-    #         if df.empty:
-    #             for a in l.admin:
-    #                 send_remind(f'{teacher_name}的课表不存在', a)
-    #         else:
-    #             df_png = l.df_to_png(df, f'{wxid}.png', title=f'{teacher_name}的课表')[0]
-    #             send_image(df_png, wxid, 'lesson')
-    #     # 通知班主任班级课表
-    #     for k, v in leaders_dict.items():
-    #         class_df = l.get_class_schedule(k)
-    #         title = f'{k}的课表'
-    #         class_pic = l.df_to_png(class_df, f'class_{v}.png', title=title)[0]
-    #         if class_pic:
-    #             wxids = l.get_wxids(k)
-    #             for wxid in wxids:
-    #                 send_image(class_pic, wxid, 'lesson')
+        # with concurrent.futures.ThreadPoolExecutor() as executor:
+    #         # 并行处理所有老师的课表
+    #         future_to_teacher = {executor.submit(
+    #             process_teacher_schedule, k, v, False): k for k, v in contacts.items()}
+    #         for future in concurrent.futures.as_completed(future_to_teacher):
+    #             teacher_name = future_to_teacher[future]
+    #             try:
+    #                 future.result()
+    #             except Exception as exc:
+    #                 print(f'老师 {teacher_name} 生成课表图片时发生异常: {exc}')
+
+    #         # 并行处理所有班级的课表
+    #         future_to_class = {executor.submit(
+    #             process_class_schedule, k, v, False): k for k, v in leaders_dict.items()}
+    #         for future in concurrent.futures.as_completed(future_to_class):
+    #             class_name = future_to_class[future]
+    #             try:
+    #                 future.result()
+    #             except Exception as exc:
+    #                 print(f'班级 {class_name} 生成课表图片时发生异常: {exc}')
     # elif teacher_name == '更新下周':
-    #     # 通知所有老师
-    #     for k, v in contacts.items():
-    #         teacher_name = k
-    #         wxid = v
-    #         df = l.get_teacher_schedule(teacher_name, week_next=True)
-    #         if df.empty:
-    #             for a in l.admin:
-    #                 send_remind(f'{teacher_name}的课表不存在', a)
-    #         else:
-    #             df_png = l.df_to_png(df, f'{wxid}.png', title=f'{teacher_name}下周的课表')[0]
-    #             send_image(df_png, wxid, 'lesson')
-    #     # 通知班主任班级课表
-    #     for k, v in leaders_dict.items():
-    #         class_df = l.get_class_schedule(k, week_next=True)
-    #         title = f'{k}下周的课表'
-    #         class_pic = l.df_to_png(class_df, f'class_{v}.png', title=title)[0]
-    #         if class_pic:
-    #             wxids = l.get_wxids(k)
-    #             for wxid in wxids:
-    #                 send_image(class_pic, wxid, 'lesson')
+    #     with concurrent.futures.ThreadPoolExecutor() as executor:
+    #         # 并行处理所有老师的下周课表
+    #         future_to_teacher_next = {executor.submit(
+    #             process_teacher_schedule, k, v, True): k for k, v in contacts.items()}
+    #         for future in concurrent.futures.as_completed(future_to_teacher_next):
+    #             teacher_name = future_to_teacher_next[future]
+    #             try:
+    #                 future.result()
+    #             except Exception as exc:
+    #                 print(f'老师 {teacher_name} 生成下周课表图片时发生异常: {exc}')
+
+    #         # 并行处理所有班级的下周课表
+    #         future_to_class_next = {executor.submit(
+    #             process_class_schedule, k, v, True): k for k, v in leaders_dict.items()}
+    #         for future in concurrent.futures.as_completed(future_to_class_next):
+    #             class_name = future_to_class_next[future]
+    #             try:
+    #                 future.result()
+    #             except Exception as exc:
+    #                 print(f'班级 {class_name} 生成下周课表图片时发生异常: {exc}')
+    content = record.content
+    l = Lesson()
+    contacts = l.contacts
+    class_leaders = l.class_template[['class_name', 'class_en']]
+    leaders_dict = dict(zip(class_leaders['class_name'], class_leaders['class_en']))
+    teacher_name = re.match(r'^(.+?)\s*的课表$', content).group(1)
+    if teacher_name == '更新所有人':
+        # 通知所有老师
+        for k, v in contacts.items():
+            teacher_name = k
+            wxid = v
+            df = l.get_teacher_schedule(teacher_name)
+            if df.empty:
+                for a in l.admin:
+                    send_remind(f'{teacher_name}的课表不存在', a)
+            else:
+                df_png = l.df_to_png(df, f'{wxid}.png', title=f'{teacher_name}的课表')[0]
+                send_image(df_png, wxid, 'lesson')
+        # 通知班主任班级课表
+        for k, v in leaders_dict.items():
+            class_df = l.get_class_schedule(k)
+            title = f'{k}的课表'
+            class_pic = l.df_to_png(class_df, f'class_{v}.png', title=title)[0]
+            if class_pic:
+                wxids = l.get_wxids(k)
+                for wxid in wxids:
+                    send_image(class_pic, wxid, 'lesson')
+    elif teacher_name == '更新下周':
+        # 通知所有老师
+        for k, v in contacts.items():
+            teacher_name = k
+            wxid = v
+            df = l.get_teacher_schedule(teacher_name, week_next=True)
+            if df.empty:
+                for a in l.admin:
+                    send_remind(f'{teacher_name}的课表不存在', a)
+            else:
+                df_png = l.df_to_png(df, f'{wxid}.png', title=f'{teacher_name}下周的课表')[0]
+                send_image(df_png, wxid, 'lesson')
+        # 通知班主任班级课表
+        for k, v in leaders_dict.items():
+            class_df = l.get_class_schedule(k, week_next=True)
+            title = f'{k}下周的课表'
+            class_pic = l.df_to_png(class_df, f'class_{v}.png', title=title)[0]
+            if class_pic:
+                wxids = l.get_wxids(k)
+                for wxid in wxids:
+                    send_image(class_pic, wxid, 'lesson')
 
 
 async def teacher_schedule(record: any):

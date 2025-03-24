@@ -53,7 +53,7 @@ async def consume_queue_timer():
         with QueueDB() as q:
             q.__consume__()
         random_sec = random.randint(*timer_random)
-        print(f"等待{random_sec}秒")
+        # print(f"等待{random_sec}秒")
         # await asyncio.sleep(random.randint(*timer_random))
         await asyncio.sleep(random_sec)
 
