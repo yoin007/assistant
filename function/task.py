@@ -300,7 +300,7 @@ async def task_start():
         'func': today_teachers, 'start_time': '07:20:02', 'end_time': '07:35:10'})
     task_scheduler.add_job(task_scheduler.random_daily_task, CronTrigger(hour=1), kwargs={
         'func': gk_countdown, 'start_time': '08:01:02', 'end_time': '08:14:10'})
-    task_scheduler.add_job(watching_parking, IntervalTrigger(seconds=30))
+    task_scheduler.add_job(watching_parking, IntervalTrigger(seconds=60))
     # task_scheduler.random_daily_task(
     # today_teachers, start_time='07:20:02', end_time='07:29:10')
     # task_scheduler.add_job(task_scheduler.random_daily_task, CronTrigger(hour=0), kwargs={'func': gk_countdown, 'start_time':'07:30:02', 'end_time':'07:49:10'})
