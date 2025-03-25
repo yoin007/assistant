@@ -8,6 +8,7 @@ import sqlite3
 
 from config.config import Config
 from config.log import LogConfig
+from sendqueue import QueueDB
 
 config = Config()
 log = LogConfig().get_logger()
@@ -131,23 +132,66 @@ class Member:
     
     @staticmethod
     def wx_contacts():
+        q = QueueDB()
+        q.token = q.get_token(Config().get_config('wcf_admin'), Config().get_config('wcf_pwd'))  # Refresh token
+        headers = {
+            'accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {q.token}'
+        }
         wcf_http_url = Config().get_config('wcf_http_url')
-        response = requests.get(wcf_http_url + 'contacts')
-        return response.json()['data']['contacts']
+        try:
+            response = requests.get(wcf_http_url + 'get_contacts', headers=headers)
+            response.raise_for_status()  # Raise an exception for bad status codes
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            log.error(f"获取联系人列表失败：{str(e)}")
+            if hasattr(e.response, 'json'):
+                error_detail = e.response.json().get('detail', '')
+                if 'Not authenticated' in error_detail:
+                    log.error("认证失败，请检查token是否有效")
+                    # Try to refresh token and retry once
+                    try:
+                        q.token = q.get_token(Config().get_config('wcf_admin'), Config().get_config('wcf_pwd'))  # Refresh token
+                        headers['Authorization'] = f'Bearer {q.token}'
+                        response = requests.get(wcf_http_url + 'get_contacts', headers=headers)
+                        response.raise_for_status()
+                        return response.json()
+                    except Exception as retry_e:
+                        log.error(f"刷新token后重试失败：{str(retry_e)}")
+            return []
     # -------------------------table: contacts---------------------------------
     # 获取所有微信联系人
     def update_contacts(self):
         members = self.__cursor__.execute("SELECT wxid FROM contacts").fetchall()
         members = [member[0] for member in members]
+        # print(members)
         contacts = self.wx_contacts()
         # print(contacts)
+        if not isinstance(contacts, list):
+            log.error("获取联系人列表失败：返回数据格式错误")
+            return
+            
         for contact in contacts:
-            if contact['wxid'] not in members:
-                self.__cursor__.execute("INSERT INTO contacts (wxid, remark, name, gender, city, province, country, code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (contact['wxid'], contact['remark'], contact['name'], contact['gender'], contact['city'], contact['province'], contact['country'], contact['code']))
-                # print( contact['wxid'] + ' 插入成功')
-            else:
-                self.__cursor__.execute("UPDATE contacts SET remark = ?, name = ?, gender = ?, city = ?, province = ?, country = ?, code = ? WHERE wxid = ?", (contact['remark'], contact['name'], contact['gender'], contact['city'], contact['province'], contact['country'], contact['code'], contact['wxid']))
-                # print(contact['wxid'] + ' 更新成功')
+            if not isinstance(contact, dict):
+                log.error(f"联系人数据格式错误：{contact}")
+                continue
+                
+            try:
+                if contact.get('wxid') not in members:
+                    self.__cursor__.execute("INSERT INTO contacts (wxid, remark, name, gender, city, province, country, code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
+                        (contact.get('wxid'), contact.get('remark'), contact.get('name'), contact.get('gender'), 
+                         contact.get('city'), contact.get('province'), contact.get('country'), contact.get('code')))
+                    # print(f"{contact.get('wxid')} 插入成功")
+                else:
+                    self.__cursor__.execute("UPDATE contacts SET remark = ?, name = ?, gender = ?, city = ?, province = ?, country = ?, code = ? WHERE wxid = ?", 
+                        (contact.get('remark'), contact.get('name'), contact.get('gender'), contact.get('city'), 
+                         contact.get('province'), contact.get('country'), contact.get('code'), contact.get('wxid')))
+                    # print(f"{contact.get('wxid')} 更新成功")
+            except Exception as e:
+                log.error(f"处理联系人数据失败：{str(e)}")
+                continue
+                
         self.__conn__.commit()
         self.__conn__.close()
         log.info('联系人更新成功')
@@ -158,9 +202,9 @@ class Member:
         :param wxid: 微信id
         :return: name
         """
-        self.__cursor__.execute("SELECT name FROM contacts WHERE wxid = ?", (wxid,))
+        self.__cursor__.execute("SELECT name, remark FROM contacts WHERE wxid = ?", (wxid,))
         result = self.__cursor__.fetchone()
-        return result[0] if result else None
+        return result if result else None
 
     
     # -------------------------table: member---------------------------------
@@ -237,6 +281,24 @@ class Member:
         log.info(f'启用函数：{func_name}')
 
 
+def wxid_name_remark(wxid):
+    """
+    从 contacts 表中获取 wxid 对应的 name
+    :param wxid: 微信id
+    """
+    with Member() as m:
+        result = m.wxid_name(wxid)
+        if not result:
+            m.update_contacts()
+            with Member() as m2:  # Create a new connection for the second query
+                result = m2.wxid_name(wxid)
+                if not result:
+                    return None
+                # else:
+                #     print(result)
+        return result
+
+
 async def insert_member(record):
     """
     插入会员信息
@@ -272,14 +334,14 @@ async def insert_member(record):
                     else:
                         alias = m.wxid_name(member)
                         if alias:
-                            m.insert_member(member, member, alias)
-                            log.info(f'添加会员：{member}, {member}, {alias}')
+                            m.insert_member(member, member, alias[0])
+                            log.info(f'添加会员：{member}, {member}, {alias[0]}')
                         else:
                             m.update_contacts()
                             alias = m.wxid_name(member)
                             if alias:
-                                m.insert_member(member, member, alias)
-                                log.info(f'添加会员：{member}, {member}, {alias}')
+                                m.insert_member(member, member, alias[0])
+                                log.info(f'添加会员：{member}, {member}, {alias[0]}')
                             else:
                                 log.error(f'添加会员出错：{record.id} - {record.content}')
         except Exception as e:

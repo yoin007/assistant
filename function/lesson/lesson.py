@@ -179,6 +179,7 @@ class Lesson:
         try:
             contacts = {}
             q = QueueDB()
+            q.token = q.get_token(Config().get_config('wcf_admin'), Config().get_config('wcf_pwd'))
             headers = {
                 'accept': 'application/json',
                 'Authorization': f'Bearer {q.token}'
@@ -606,6 +607,7 @@ class Lesson:
                         "dst": new_schedule_file}
                 # data = {"id": id, "extra": schedule_file,"dst": "d:/abc.xlsx"}
                 q = QueueDB()
+                q.token = q.get_token(Config().get_config('wcf_admin'), Config().get_config('wcf_pwd'))
                 headers = {
                     'accept': 'application/json',
                     'Content-Type': 'application/json',
@@ -1533,6 +1535,7 @@ async def mass_message(record: any):
                 "dst": new_notice_file}
         print(data)
         q = QueueDB()
+        q.token = q.get_token(Config().get_config('wcf_admin'), Config().get_config('wcf_pwd'))
         headers = {
             'accept': 'application/json',
             'Content-Type': 'application/json',
