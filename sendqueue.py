@@ -8,6 +8,7 @@ import requests
 import sqlite3
 import time
 from datetime import datetime, timedelta
+import threading
 
 from config.log import LogConfig
 from config.config import Config
@@ -21,10 +22,13 @@ pwd = config.get_config('wcf_pwd')
 
 class QueueDB:
     _instance = None
+    _lock = threading.Lock()
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super().__new__(cls)
+            with cls._lock:
+                if not cls._instance:
+                    cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self):
@@ -34,14 +38,19 @@ class QueueDB:
         self.expeired_minutes = 28
         self.expeired_time = None
         self.token = self.get_token(user, pwd)
+        self._local = threading.local()
 
     def __enter__(self, db='databases/queues.db'):
-        self.__conn__ = sqlite3.connect(db)
-        self.__cursor__ = self.__conn__.cursor()
+        if not hasattr(self._local, 'connection'):
+            self._local.connection = sqlite3.connect(db)
+            self._local.cursor = self._local.connection.cursor()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.__conn__.close()
+        if hasattr(self._local, 'connection'):
+            self._local.connection.close()
+            del self._local.connection
+            del self._local.cursor
 
     def __create_table__(self):
         """
@@ -51,7 +60,7 @@ class QueueDB:
         p_time: 消息生产时间
         c_time: 消息消费时间
         """
-        self.__cursor__.execute('''
+        self._local.cursor.execute('''
             CREATE TABLE IF NOT EXISTS queues (
                 id TEXT,
                 is_consumed BOOLEAN DEFAULT 0,
@@ -62,7 +71,7 @@ class QueueDB:
                 c_time TEXT,
                 timestamp INTEGER                          
                 )''')
-        self.__conn__.commit()
+        self._local.connection.commit()
 
     def __produce__(self, m_id: str, data: dict, consumer: str, producer: str):
         """
@@ -85,10 +94,10 @@ class QueueDB:
             'timestamp': time.time().__int__()
         }
         try:
-            self.__cursor__.execute('''
+            self._local.cursor.execute('''
             INSERT INTO queues (id, data, producer, p_time, consumer, c_time, timestamp) VALUES (:id, :data, :producer, :p_time, :consumer, :c_time, :timestamp)
             ''', record)
-            self.__conn__.commit()
+            self._local.connection.commit()
         except Exception as e:
             log.error(f'生产消息队列失败: {e}')
 
