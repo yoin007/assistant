@@ -20,7 +20,7 @@ class LogConfig:
             'disable_existing_loggers': False,
             'formatters': {
                 'default': {
-                    'format': '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s - %(message)s'
+                    'format': '[%(asctime)s] [%(name)s] [%(levelname)s] [%(funcName)s] \n%(message)s'
                 },
             },
             'handlers': {
