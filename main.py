@@ -7,7 +7,6 @@ import asyncio
 import random
 import re
 import uvicorn
-import signal
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 
@@ -61,8 +60,6 @@ async def consume_queue_timer():
 @app.post('/')
 async def root(request: Request):
     body = await request.json()
-    log.info(body)
-
     record = Record(body)
     # 消息类型：
     # 1-文本 3-图片 34-语音 42-个人或公众号名片 42-企业微信名片 43-视频 47-动画表情 48-定位 10000-系统提示
@@ -155,6 +152,7 @@ def trigger(roomid, content, is_at, record_type, sender, mid):
 
 if __name__ == "__main__":
     try:
-        uvicorn.run('main:app', host='0.0.0.0', port=8899, reload=True)
+        # uvicorn.run('main:app', host='0.0.0.0', port=9988, reload=True)  # app
+        uvicorn.run('main:app', host='0.0.0.0', port=8899, reload=True)  # dev
     except KeyboardInterrupt:
         print("\nShutting down gracefully...")

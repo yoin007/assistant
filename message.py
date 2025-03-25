@@ -12,6 +12,7 @@ import xmltodict
 from config.log import LogConfig
 from config.config import Config
 from function.manage.manage import Manage
+from function.manage.member import wxid_name_remark
 from sendqueue import QueueDB
 
 log = LogConfig().get_logger()
@@ -30,27 +31,45 @@ class Record:
         self.timestamp = body.get("ts")
         self.xml = body.get("xml", '')
         if self.is_group:
-            # self.alias = self.get_alias()  # 该方法尚未实现
-            self.alias = ''
+            self.alias = self.get_alias(self.sender, self.roomid)  # 该方法尚未实现
         else:
             self.alias = ''
 
         # 调整 type 字段，细化类型:
-        # 0-文本 3-图片 34-语音 42-个人或公众号名片 42-企业微信名片 43-视频 47-动画表情 48-定位 10000-系统提示 49-应用
+        # 1-文本 3-图片 34-语音 42-个人或公众号名片 42-企业微信名片 43-视频 47-动画表情 48-定位 10000-系统提示 49-应用
         # 4956-引用 493-音乐 495-网页链接 496-文件 4916-卡券 4919-聊天记录 4933-小程序 492000-转账
-        #
-        # 调整 content 字段, 对纯文本以外其他类型的消息，提取相关的文本信息，以便能够传入 GPT 进行处理，详见函数注释。
-        #
-        # 调整 extra 字段，对纯文本以外其他类型的消息，提供了一些易读的信息，以便能够传入 GPT 进行处理，详见函数注释。
-        #
         # 新增 parsexml 字段，对纯文本以外其他类型的消息，提供了 xml 的字典解析
         self.type, self.content, self.parsexml = self.parse(body.get('type'), body.get('content'))
 
         # 消息存入本地数据库
         with MessageDB() as db:
             db.insert(self.__dict__)
+            self.log_record()
+
+    def log_record(self):
+        loginfo = f""
+        if self.is_self:
+            loginfo += f"### 发送消息 {self.id} ###\n接收人:"
+        else:
+            loginfo += f"### 收到消息 {self.id} ###\n发送人:"
+        if self.is_group:
+            room_remark = wxid_name_remark(self.roomid)
+            loginfo += f"{room_remark[0]}[{self.roomid}]-{self.alias}[{self.sender}]"
+        else:
+            remark = wxid_name_remark(self.roomid)
+            loginfo += f"{remark[1]}[{self.roomid}]"
+        loginfo += f"\n消息类型: {self.type}"
+        loginfo += f"\n消息内容: {self.content}"
+        loginfo += f"\nextra: {self.extra}"
+        loginfo += f"\nxml: {self.xml}"
+        log.info(loginfo)
 
         self.check_ban()
+
+    def get_alias(self, wxid, roomid):
+        with QueueDB() as q:
+            alias = q.alias(wxid, roomid)
+            return alias
 
     # 检查违禁词
     def check_ban(self):

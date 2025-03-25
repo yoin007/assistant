@@ -221,6 +221,28 @@ class QueueDB:
             'dst': dst,
         }
         self.__produce__(m_id, data, wcf + 'save-file', producer)
+    
+    def alias(self, wxid, roomid):
+        # 检查token是否过期
+        now = datetime.now()
+        if now >= self.expeired_time:
+            _token = self.get_token(user, pwd)
+            self.token = _token
+        else:
+            _token = self.token
+        headers = {
+            'accept': 'application/json',
+            'Authorization': f'Bearer {_token}'
+        }
+        data = {
+            "roomid": roomid,
+            "wxid": wxid
+        }
+        r = requests.post(wcf + 'alias', json=data, headers=headers)
+        if r.status_code == 200:
+            return r.json()
+        else:
+            return ''
 
 
 if __name__ == '__main__':
