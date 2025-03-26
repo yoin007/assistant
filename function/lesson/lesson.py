@@ -1457,7 +1457,7 @@ def today_teachers():
                 if teacher not in teachers:
                     teachers[teacher] = []
                 teachers[teacher].append(
-                    f'{class_name}:{order_label} {subjcet[:2]}')
+                    f'{order_label}:{class_name} {subjcet[:2]}')
             except Exception as e:
                 print(e, order, class_name)
     if not teachers:
