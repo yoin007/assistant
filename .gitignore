@@ -6,6 +6,9 @@ __pycache__/
 # config
 *.yaml
 
+# temp
+temp.py
+
 # C extensions
 *.so
 

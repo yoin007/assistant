@@ -16,12 +16,63 @@ from sendqueue import QueueDB
 
 config = Config()
 
-def send_remind(tips, receiver, produce = 'api'):
+def send_remind(tips, receiver, aters = '', produce = 'api'):
     mid = str(time.time().__int__())
-    print('api', mid)
     with QueueDB() as q:
-        q.send_text(mid, tips, receiver, '', produce)
+        q.send_text(mid, tips, receiver, aters, produce)
     time.sleep(1)
+
+
+async def zhaosheng_assistant(record):
+    text = record.content
+    pattern = r'@天龙招生助理\s*(.*)'
+    match = re.search(pattern, text)
+    if match:
+        user_message = match.group(1)
+        zs_config = config.get_config('zhaosheng')
+        token = zs_config['token']
+        assistant_id = zs_config['assistant_id']
+        user_id = zs_config['user_id']
+        # 定义 API 的 URL
+        url = 'https://yuanqi.tencent.com/openapi/v1/agent/chat/completions'
+
+        # 定义请求头
+        headers = {
+            'X-Source': 'openapi',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {token}'  # 使用传入的 token
+        }
+
+        # 定义请求体
+        data = {
+            "assistant_id": assistant_id,
+            "user_id": user_id,
+            "stream": False,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": user_message  # 使用传入的用户消息
+                        }
+                    ]
+                }
+            ]
+        }
+
+        # 发送 POST 请求
+        response = requests.post(url, headers=headers, json=data)  # 使用 json 参数自动设置正确的 Content-Type
+
+        # 返回响应内容
+        try:
+            rsp = response.json()["choices"][0]['message']['content']
+        except json.decoder.JSONDecodeError:
+            rsp = "抱歉，我无法回答该问题，请致电：88857277"
+    else:
+        rsp = "抱歉，我无法回答该问题，请致电：88857277"
+    send_remind(rsp, record.roomid, record.sender)
+
 
 def one_day_English():
     # 原来是每日一句英语，但是api失效，更改为下面的每日一句

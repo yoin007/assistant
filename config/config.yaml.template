@@ -42,3 +42,8 @@ park_db:
 
 invite_rooms:
  assistant: 5@chatroom
+
+zhaosheng: # 腾讯元器
+ token: your-token
+ assistant_id: your-id
+ user_id: bot
