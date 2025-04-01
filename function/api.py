@@ -71,7 +71,8 @@ async def zhaosheng_assistant(record):
             rsp = "抱歉，我无法回答该问题，请致电：88857277"
     else:
         rsp = "抱歉，我无法回答该问题，请致电：88857277"
-    send_remind(rsp, record.roomid, record.sender)
+    send_remind(rsp, record.roomid, record.sender, 'zhaosheng')
+    return None
 
 
 def one_day_English():
@@ -181,8 +182,8 @@ async def weather_report(record: any):
         print(str(e))
         resp += str(e)
     print(resp, record.roomid)
-    send_remind(resp, record.roomid, 'weather')
-    return "Fail"
+    send_remind(resp, record.roomid, '', 'weather')
+    return None
     
 async def zhipu_answer(record: any):
     text = record.content
@@ -190,7 +191,7 @@ async def zhipu_answer(record: any):
     if match:
         question = match.group(1)
     else:
-        send_remind('智谱问答出错，请联系管理员', record.roomid, 'zhipu')
+        send_remind('智谱问答出错，请联系管理员', record.roomid, '', 'zhipu')
         return 0 
     key = Config().get_config("zhipu_key")
     client = ZhipuAI(api_key=key)
@@ -215,7 +216,7 @@ async def zhipu_answer(record: any):
         await asyncio.sleep(6)
         get_cnt += 1
     answer = result_response.choices[0].message.content
-    send_remind(answer, record.roomid, 'zhipu')
+    send_remind(answer, record.roomid, '', 'zhipu')
     return 1
 
 async def zhipu_video(record: any):
@@ -224,7 +225,7 @@ async def zhipu_video(record: any):
     if match:
         prompt = match.group(1)
     else:
-        send_remind('智谱视频出错，请联系管理员', record.roomid, 'zhipu')
+        send_remind('智谱视频出错，请联系管理员', record.roomid, '', 'zhipu')
         return 0 
     key = Config().get_config("zhipu_key")
     client = ZhipuAI(api_key=key)
@@ -244,8 +245,8 @@ async def zhipu_video(record: any):
                 break
             else:
                 await asyncio.sleep(10)
-        send_remind(mp4_url, record.roomid, 'zhipu')
+        send_remind(mp4_url, record.roomid, '', 'zhipu')
         return mp4_url
     except Exception as e:
-        send_remind(str(e), record.roomid, 'zhipu')
+        send_remind(str(e), record.roomid, '', 'zhipu')
         return str(e)
