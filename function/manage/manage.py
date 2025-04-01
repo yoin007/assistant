@@ -71,15 +71,15 @@ class Manage:
             log.error(f'移除 {wxid} 失败，错误信息：{response.text}')
             return False
 
-# 新版本中 该功能已移除
-# async def auto_new_friend(record: any):
-#     xml_data = record.parsexml
-#     parse_xml = json.loads(str(xml_data))
-#     v3 = parse_xml['@encryptusername'],
-#     v4 = parse_xml['@ticket'],
-#     scene = int(parse_xml['@scene'])
-#     with QueueDB() as q:
-#         q.accept_new_friend(record.id, scene, v3[0], v4[0], 'manage')
+# V39.4.4 已经实现该功能，V39.2版本不支持
+async def auto_new_friend(record: any):
+    xml_data = record.parsexml
+    parse_xml = json.loads(str(xml_data))
+    v3 = parse_xml['@encryptusername'],
+    v4 = parse_xml['@ticket'],
+    scene = int(parse_xml['@scene'])
+    with QueueDB() as q:
+        q.accept_new_friend(record.id, scene, v3[0], v4[0], 'manage')
 
 
 def say_hi_qun(record: any):
