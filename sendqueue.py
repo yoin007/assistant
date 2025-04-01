@@ -165,6 +165,7 @@ class QueueDB:
                 log.error(f'消费消息队列失败: {e}-{record[5] if record else ""}')
                 return None
 
+    # V39.2.4版本@消息有@效果，V39.4.4版本@消息无@效果
     def send_text(self, m_id: str, msg: str, receiver: str, aters: str = '', producer: str = 'main'):
         data = {
             'msg': msg,
@@ -199,10 +200,11 @@ class QueueDB:
         }
         self.__produce__(m_id, data, wcf + 'rich-text', producer)
 
+    # V39.4.4版本邀请入群调用了方法但未生效,V39.2.4版本可用
     def cr_members(self, m_id: str, chatroom: str, wxids: str, producer: str = 'main'):
         data = {
             'roomid': chatroom,
-            'wxid': wxids,
+            'wxids': wxids,
         }
         self.__produce__(m_id, data, wcf + 'invite-chatroom-member', producer)
 
