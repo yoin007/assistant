@@ -5,6 +5,8 @@
 import re
 import requests
 import sqlite3
+import time
+import uuid
 
 from config.config import Config
 from config.log import LogConfig
@@ -13,6 +15,11 @@ from sendqueue import QueueDB
 config = Config()
 log = LogConfig().get_logger()
 
+def send_remind(tips, receiver, produce='manage'):
+    mid = str(time.time().__int__()) + str(uuid.uuid4())
+    with QueueDB() as q:
+        q.send_text(mid, tips, receiver, '', produce)
+    time.sleep(1)
 
 class Member:
     def __enter__(self, db='databases/member.db'):
@@ -259,6 +266,30 @@ class Member:
             result = self.__cursor__.fetchone()
             return result if result else None
     
+    def permission_info_by_id(self, id):
+        """ 通过 id 查询权限信息 """
+        self.__cursor__.execute("SELECT * FROM permission WHERE id =?", (id,))
+        result = self.__cursor__.fetchone()
+        return result if result else None
+    
+    def add_permission(self, func_name, func, active, black_list, white_list, type, pattern, need_at, reply, module, level, example, score_event):
+        """
+        添加权限信息
+        """
+        try:
+            cursor = self.__cursor__.execute("INSERT INTO permission (func_name, func, active, black_list, white_list, type, pattern, need_at, reply, module, level, example, score_event) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                                (func_name, func, active, black_list, white_list, type, pattern, need_at, reply, module, level, example, score_event))
+            self.__conn__.commit()
+            if cursor.rowcount > 0:
+                log.info(f'添加权限：{func_name} 成功')
+                return True
+            else:
+                log.warning(f'添加权限：{func_name} 失败，未插入任何行')
+                return False
+        except sqlite3.Error as e:
+            log.error(f'添加权限：{func_name} 失败，错误：{str(e)}')
+            return False
+    
     def inactive_func(self, func_name):
         """
         停用函数
@@ -280,6 +311,93 @@ class Member:
         self.__conn__.commit()
         log.info(f'启用函数：{func_name}')
 
+async def query_permission(record):
+    """
+    查询权限信息
+    :param record: 消息记录
+    :return: 权限信息
+    """
+    text = record.content
+    pid = re.match(r"^权限查询-(\d+)$", text)
+    if not pid:
+        send_remind('权限查询失败：请输入正确的权限id', record.sender)
+        return None
+    pid = pid.group(1)
+    with Member() as m:
+        permission = m.permission_info_by_id(pid)
+        if not permission:
+            send_remind('权限查询失败：权限id不存在', record.sender)
+            return None
+        else:
+            tips = f'id：{permission[0]}\n' \
+                    f'函数名：{permission[1]}\n' \
+                    f'函数：{permission[2]}\n' \
+                    f'是否启用：{permission[3]}\n' \
+                    f'黑名单：{permission[4]}\n' \
+                    f'白名单：{permission[5]}\n' \
+                    f'类型：{permission[6]}\n' \
+                    f'正则表达式：{permission[7]}\n' \
+                    f'是否需要at：{permission[8]}\n' \
+                    f'回复：{permission[9]}\n' \
+                    f'模块：{permission[10]}\n' \
+                    f'最低等级：{permission[11]}\n' \
+                    f'示例：{permission[12]}\n' \
+                    f'积分事件：{permission[13]}'
+            send_remind(tips, record.sender)
+            return None
+
+async def insert_permission(record):
+    """
+    添加权限信息
+    :param record: 消息记录
+    :return: 权限信息
+    """
+    print(record.content)
+    # 解析权限信息
+    try:
+        lines = record.content.strip().split('\n')
+        # 提取各字段信息
+        func_name = lines[1].split('：')[1].strip() if len(lines) > 1 else ''
+        func = lines[2].split('：')[1].strip() if len(lines) > 2 else ''
+        active = int(lines[3].split('：')[1].strip()) if len(lines) > 3 else 1
+        black_list = lines[4].split('：')[1].strip() if len(lines) > 4 else ''
+        white_list = lines[5].split('：')[1].strip() if len(lines) > 5 else ''
+        type_value = lines[6].split('：')[1].strip() if len(lines) > 6 else ''
+        pattern = lines[7].split('：')[1].strip() if len(lines) > 7 else ''
+        need_at = int(lines[8].split('：')[1].strip()) if len(lines) > 8 else 0
+        reply = lines[9].split('：')[1].strip() if len(lines) > 9 else ''
+        module = lines[10].split('：')[1].strip() if len(lines) > 10 else ''
+        level = lines[11].split('：')[1].strip() if len(lines) > 11 else '5'
+        example = lines[12].split('：')[1].strip() if len(lines) > 12 else ''
+        score_event = lines[13].split('：')[1].strip() if len(lines) > 13 else ''
+        
+        # 处理None值
+        black_list = None if black_list == 'None' else black_list
+        white_list = None if white_list == 'None' else white_list
+        reply = None if reply == 'None' else reply
+        score_event = None if score_event == 'None' else score_event
+        
+        # 验证必填字段
+        if not active or not pattern or not module or not white_list or not level:
+            send_remind('添加权限失败：缺少必要字段（是否启用、正则表达式、模块、白名单、最低等级）', record.sender)
+            return False
+        # 添加权限
+        with Member() as m:
+            success = m.add_permission(
+                func_name, func, active, black_list, white_list, 
+                type_value, pattern, need_at, reply, module, 
+                level, example, score_event
+            )
+            
+            if success:
+                send_remind(f'添加权限成功：{func_name}', record.sender)
+            else:
+                send_remind(f'添加权限失败：数据库操作错误', record.sender)
+                
+    except Exception as e:
+        log.error(f'添加权限出错：{record.id} - {record.content} - {e}')
+        send_remind(f'添加权限失败：{str(e)}', record.sender)
+    return None
 
 def wxid_name_remark(wxid):
     """
