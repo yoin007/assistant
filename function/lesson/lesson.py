@@ -1602,5 +1602,6 @@ async def mass_message(record: any):
 async def guide_template(record: any):
     l = Lesson()
     lesson_dir = l.lesson_dir
-    guide_file = os.path.join(lesson_dir, 'template', '导学案样稿.docx')
+    # guide_file = os.path.join(lesson_dir, 'template', '导学案样稿.docx')
+    guide_file = os.path.join(lesson_dir, 'template', 'daoxuean.docx') # API发送文件不支持中文path
     send_file(guide_file, record.roomid)
