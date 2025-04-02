@@ -9,7 +9,6 @@ import re
 import shutil
 import time
 import uuid
-# import concurrent.futures
 from datetime import datetime, timedelta
 from html2image import Html2Image
 
@@ -230,6 +229,8 @@ class Lesson:
     def get_wxids(self, teacher_name) -> list:
         """获取老师或班级的微信ID，如果参数是班级名，则返回班级的班主任的微信ID"""
         wxids = []
+        if self.class_template is None or self.contacts is None:
+            return wxids
         try:
             if teacher_name in self.class_template['class_name'].tolist():
                 class_leaders = dict(
@@ -296,23 +297,26 @@ class Lesson:
     # ---------- 文件（夹）操作 ----------
     def create_c_month_dir(self):
         """
-        创建当前月份的文件夹，如果不存在
+        创建当前月份的文件夹，如果不存在则创建，返回月份目录路径
         """
         now_t = datetime.now()
         c_month = now_t.strftime('%Y%m')
         c_month_dir = os.path.join(self.lesson_dir, c_month)
+        
         if not os.path.isdir(c_month_dir):
             try:
                 os.mkdir(c_month_dir)
                 os.mkdir(os.path.join(c_month_dir, 'class_schedule'))
-                os.mkdir(os.path.join(c_month_dir, 'schedule_images'))
                 os.mkdir(os.path.join(c_month_dir, 'schedule_history'))
                 self.notify_admins(f'创建{c_month_dir}文件夹成功')
             except Exception as e:
                 self.notify_admins(f'创建{c_month_dir}文件夹失败：{e}')
                 log.error(f'创建文件夹失败：{e}')
+                return ''
+        
+        return c_month_dir  # 无论目录是否存在，都返回目录路径
 
-    def _handle_file_error(self, operation: str, error_msg: str, source: str = None, dest: str = None):
+    def _handle_file_error(self, operation: str, error_msg: str, source: str = '', dest: str = ''):
         """统一处理文件操作错误, 通知管理员"""
         error = f"无法{operation}"
         if source:
@@ -327,16 +331,14 @@ class Lesson:
 
     def move_folder(self, src='', dst='history') -> int:
         """文件夹迁移，把上月的数据文件迁移至 history 文件夹（暂时未用到）"""
-        try:
-            now_t = datetime.now()
-            last_month = now_t - timedelta(days=now_t.day)
-            p_month = last_month.strftime("%Y%m")
-
-            src_dir = os.path.join(self.lesson_dir, src) if src else os.path.join(
+        now_t = datetime.now()
+        last_month = now_t - timedelta(days=now_t.day)
+        p_month = last_month.strftime("%Y%m")
+        src_dir = os.path.join(self.lesson_dir, src) if src else os.path.join(
                 self.lesson_dir, p_month)
-            dst_dir = os.path.join(self.lesson_dir, dst,
+        dst_dir = os.path.join(self.lesson_dir, dst,
                                    p_month) if dst == 'history' else dst
-
+        try:
             if not os.path.exists(src_dir):
                 return self._handle_file_error("移动", "源目录不存在", src_dir)
 
@@ -537,6 +539,8 @@ class Lesson:
             df_schedule, week_next=week_next, ignore=ignore)
         subject_teacher = pd.read_excel(os.path.join(
             self.lesson_dir, 'checkTemplate.xlsx'), sheet_name='teachers', engine='openpyxl').apply(list, axis=1)
+        if self.class_template is None:
+            return df_schedule
         required_columns = self.class_template['class_name'].tolist()
 
         def get_teacher(subject: str):
@@ -732,6 +736,8 @@ class Lesson:
 
     def _check_schedule_class(self, df: pd.DataFrame) -> str:
         """检查课表班级列是否完整"""
+        if self.class_template is None:
+            return 'ok'
         required_columns = self.class_template['class_name'].tolist()
         missing_columns = [
             col for col in required_columns if col not in df.columns]
@@ -748,6 +754,8 @@ class Lesson:
         """检查课表中是否有重复的科目"""
         df_teacher = self.repalce_subject_teacher(df, ignore=ignore)
         df_subject = self.format_schedule(df, ignore=ignore)
+        if self.class_template is None:
+            return 'class_template Error'
         class_list = self.class_template['class_name'].tolist()
         df_class = df_teacher[class_list]
 
@@ -1078,11 +1086,49 @@ class Lesson:
                 current_classes[class_name] = df_current[class_name].values[0]
         return current_classes
 
-
-# TODO: 月份目录
 async def create_month_dir():
+    """
+    每个月的1号，将上个月的课表复制到 新月份 的目录下
+    """
     l = Lesson()
-    l.create_c_month_dir()
+    try:
+        current_dir = l.create_c_month_dir()
+        if current_dir:
+            log.info(f"创建目录成功: {current_dir}")
+        else:
+            log.error("创建目录失败")
+            return False
+    except Exception as e:
+        log.error(f"创建目录时出错: {str(e)}")
+        return False
+    c_month = current_dir.split('/')[-1]
+    # c_month = "202501"
+    year = int(c_month[:4])
+    month = int(c_month[4:])
+    if month == 1:
+        p_month = f"{year-1}12"
+    else:
+        p_month = f"{year}{month-1:02d}"
+
+    # 将上月的课表复制到新月份的目录下
+    p_month_dir = os.path.join(l.lesson_dir, p_month)
+    c_month_dir = os.path.join(l.lesson_dir, c_month)
+    schedule_list = os.listdir(os.path.join(p_month_dir, 'class_schedule'))
+    time_flag = 0
+    schedule_file = ''
+    for schedule in schedule_list:
+        timestamp = int(schedule.split('-')[-1].split('.')[0])
+        if timestamp > time_flag:
+            time_flag = timestamp
+            schedule_file = schedule
+    if schedule_file:
+        shutil.copy(os.path.join(p_month_dir, 'class_schedule', schedule_file),
+                    os.path.join(c_month_dir, 'class_schedule', schedule_file))
+        log.info(f"月初以复制课表文件成功: {schedule_file}")
+        return True
+    else:
+        log.error("未找到文件")
+        return False
 
 
 async def update_schedule(record: any):

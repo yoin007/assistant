@@ -3,7 +3,7 @@
 # @Author : Tech_T
 
 
-from function.lesson.lesson import refresh_schedule, today_teachers
+from function.lesson.lesson import refresh_schedule, today_teachers, create_month_dir
 from function.api import one_day_English, get_joke, get_weather, holiday
 from function.parking import watching_parking
 import asyncio
@@ -291,27 +291,6 @@ def gk_countdown():
 
 task_scheduler = Task()
 
-
-async def task_start():
-    # 添加每日高考倒计时提醒
-    task_scheduler.add_job(task_scheduler.random_daily_task, CronTrigger(hour=3), kwargs={
-        'func': refresh_schedule, 'start_time': '07:11:02', 'end_time': '07:17:10'})
-    task_scheduler.add_job(task_scheduler.random_daily_task, CronTrigger(hour=2), kwargs={
-        'func': today_teachers, 'start_time': '07:20:02', 'end_time': '07:35:10'})
-    task_scheduler.add_job(task_scheduler.random_daily_task, CronTrigger(hour=1), kwargs={
-        'func': gk_countdown, 'start_time': '08:01:02', 'end_time': '08:14:10'})
-    task_scheduler.add_job(watching_parking, IntervalTrigger(seconds=60))
-    # task_scheduler.random_daily_task(
-    # today_teachers, start_time='07:20:02', end_time='07:29:10')
-    # task_scheduler.add_job(task_scheduler.random_daily_task, CronTrigger(hour=0), kwargs={'func': gk_countdown, 'start_time':'07:30:02', 'end_time':'07:49:10'})
-    # task_scheduler.add_job_cron(morning_hi, '1206 15:22')
-    # 喝水提醒
-    water_time = ['09:40', '11:00', '14:15', '16:20']
-    for t in water_time:
-        task_scheduler.add_job_cron(water_remind, t)
-    await task_scheduler.run(3600*24*30)
-
-
 async def get_task_list(record: any):
     receiver = record.roomid
     tips = task_scheduler.show_task()
@@ -377,3 +356,23 @@ async def add_interval_remind(record: any, task_scheduler=task_scheduler):
         task_scheduler.add_job_interval(
             task_scheduler.send_remind, trigger, [tips, record.roomid])
         log.info(f'添加重复提醒任务: 每隔{seconds}秒, 提醒内容: {tips}')
+
+async def task_start():
+    # 添加每日高考倒计时提醒
+    task_scheduler.add_job(task_scheduler.random_daily_task, CronTrigger(hour=3), kwargs={
+        'func': refresh_schedule, 'start_time': '07:11:02', 'end_time': '07:17:10'})
+    task_scheduler.add_job(task_scheduler.random_daily_task, CronTrigger(hour=2), kwargs={
+        'func': today_teachers, 'start_time': '07:20:02', 'end_time': '07:35:10'})
+    task_scheduler.add_job(task_scheduler.random_daily_task, CronTrigger(hour=1), kwargs={
+        'func': gk_countdown, 'start_time': '08:01:02', 'end_time': '08:14:10'})
+    task_scheduler.add_job(watching_parking, IntervalTrigger(seconds=60))
+    task_scheduler.add_job(create_month_dir, CronTrigger(day=1))
+    # task_scheduler.random_daily_task(
+    # today_teachers, start_time='07:20:02', end_time='07:29:10')
+    # task_scheduler.add_job(task_scheduler.random_daily_task, CronTrigger(hour=0), kwargs={'func': gk_countdown, 'start_time':'07:30:02', 'end_time':'07:49:10'})
+    # task_scheduler.add_job_cron(morning_hi, '1206 15:22')
+    # 喝水提醒
+    water_time = ['09:40', '11:00', '14:15', '16:20']
+    for t in water_time:
+        task_scheduler.add_job_cron(water_remind, t)
+    await task_scheduler.run(3600*24*30)
