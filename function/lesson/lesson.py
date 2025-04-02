@@ -1598,3 +1598,9 @@ async def mass_message(record: any):
         if response_path:
             os.chmod(response_path, 0o777)
             group_send(response_path, record.roomid)
+
+async def guide_template(record: any):
+    l = Lesson()
+    lesson_dir = l.lesson_dir
+    guide_file = os.path.join(lesson_dir, 'template', '导学案样稿.docx')
+    send_file(guide_file, record.roomid)
