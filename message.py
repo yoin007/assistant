@@ -92,7 +92,7 @@ class Record:
                 return 0, content, {}
             # 文本
             case 1:
-                msgsource = xmltodict.parse(self.xml).get('msgsource') if self.xml and '<![CDATA' in self.xml else None
+                msgsource = xmltodict.parse(self.xml).get('msgsource') if self.xml else None
                 atuserlist = msgsource.get('atuserlist', None) if msgsource else None
                 return 1, content, atuserlist 
             # 图片

@@ -215,7 +215,7 @@ class Member:
 
     
     # -------------------------table: member---------------------------------
-    def insert_member(self, uuid, wxid, alias, note=''):
+    def insert_member(self, uuid, wxid, alias, level, model, note=''):
         """
         往数据库添加会员信息
         :param uuid: 会员uuid
@@ -223,7 +223,7 @@ class Member:
         :param alias: 会员别名
         :param note: 备注
         """
-        self.__cursor__.execute("INSERT INTO member (uuid, wxid, alias, module, birthday, note) VALUES (?, ?, ?, 'basic','', ?)", (uuid, wxid, alias, note))
+        self.__cursor__.execute("INSERT INTO member (uuid, wxid, alias, level, module, birthday, note) VALUES (?, ?, ?, ?, ?,'', ?)", (uuid, wxid, alias, level, model, note))
         self.__conn__.commit()
     
     def member_info(self, uuid):
@@ -422,10 +422,17 @@ async def insert_member(record):
     插入会员信息
     :param record: 会员信息
     """
+    level = 5
+    model = 'basic'
+    results = record.content.split('-')
+    if len(results) == 3:
+        level = results[1]
+        model += f"/{results[2]}"
     if '@chatroom' in record.roomid:
-        pattern = r'@(.*?)\u2005'
-        matches = re.findall(pattern, record.content)
-        at_list = record.parsexml.replace('"', '').split(',')[1:]
+        text = record.content.split('-')[0]
+        pattern = r'@(\w+)'
+        matches = re.findall(pattern, text)
+        at_list = record.parsexml.replace('"', '').split(',')
         print(matches, at_list)
         with Member() as m:
             if len(at_list) == len(matches):
@@ -433,37 +440,48 @@ async def insert_member(record):
                     uuid = k + '#' + record.roomid
                     row = m.member_info(uuid)
                     if row:
-                        log.info(f'会员已存在：{uuid}')
+                        send_remind(f'会员已存在：{uuid}', record.sender)
                     else:
-                        m.insert_member(uuid, k, v)
-                        log.info(f'添加会员：{uuid}, {k}, {v}')
+                        m.insert_member(uuid, k, v, level, model)
+                        send_remind(f'添加会员：{uuid}, {k}, {v}', record.sender)
 
             else:
-                log.error(f'添加会员出错：{record.id} - {record.content}')
+                send_remind(f'添加会员出错1：{record.id} - {record.content}', record.sender)
     else:
         try:
-            member_str = record.content.replace('：', ':').replace(' ', '').split(':')[1]
+            member_str = record.content.replace('：', ':').replace(' ', '').split('-')[0].split(':')[1]
             member_list = member_str.split(',') 
             with Member() as m:
                 for member in member_list:
                     row = m.member_info(member)
                     if row:
-                        log.info(f'会员已存在：{member}')
+                        send_remind(f'会员已存在：{member}', record.sender)
                     else:
+                        name = ''
                         alias = m.wxid_name(member)
                         if alias:
-                            m.insert_member(member, member, alias[0])
-                            log.info(f'添加会员：{member}, {member}, {alias[0]}')
-                        else:
-                            m.update_contacts()
-                            alias = m.wxid_name(member)
-                            if alias:
-                                m.insert_member(member, member, alias[0])
-                                log.info(f'添加会员：{member}, {member}, {alias[0]}')
+                            if alias[0]:
+                                name = alias[1]
                             else:
-                                log.error(f'添加会员出错：{record.id} - {record.content}')
+                                name = alias[0]
+                        else:
+                            with Member() as m2:
+                                m2.update_contacts()
+                            with Member() as m3:
+                                alias = m3.wxid_name(member)
+                                if not alias:
+                                    if alias[0]:
+                                        name = alias[0]
+                                    else:
+                                        name = alias[1]
+                        if name:
+                            with Member() as m4:
+                                m4.insert_member(member, member, name, level, model)
+                                send_remind(f'添加会员：{member}, {member}, {name}', record.sender)
+                        else:
+                            send_remind(f'添加会员出错2：{record.id} - 无该好友：{record.content}', record.sender)
         except Exception as e:
-            log.error(f'添加会员出错：{record.id} - {record.content} - {e}')
+            send_remind(f'添加会员出错3：{record.id} - {record.content} - {e}', record.sender)
                         
 def check_permission(func):
     def wrapper(pos, record, *args, **kwargs):
