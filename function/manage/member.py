@@ -453,35 +453,22 @@ async def insert_member(record):
         try:
             member_str = record.content.replace('：', ':').replace(' ', '').split('-')[0].split(':')[1]
             member_list = member_str.split(',') 
-            with Member() as m:
-                for member in member_list:
+            for member in member_list:
+                with Member() as m:
                     row = m.member_info(member)
-                    if row:
-                        send_remind(f'会员已存在：{member}', record.sender)
+                if row:
+                    send_remind(f'会员已存在：{member}', record.sender)
+                else:
+                    name = ''
+                    alias = wxid_name_remark(member)
+                    if alias:
+                        name = alias[1] if alias[1] else alias[0]
+                    if name:
+                        with Member() as m4:
+                            m4.insert_member(member, member, name, level, model)
+                            send_remind(f'添加会员：{member}, {member}, {name}', record.sender)
                     else:
-                        name = ''
-                        alias = m.wxid_name(member)
-                        if alias:
-                            if alias[0]:
-                                name = alias[1]
-                            else:
-                                name = alias[0]
-                        else:
-                            with Member() as m2:
-                                m2.update_contacts()
-                            with Member() as m3:
-                                alias = m3.wxid_name(member)
-                                if not alias:
-                                    if alias[0]:
-                                        name = alias[0]
-                                    else:
-                                        name = alias[1]
-                        if name:
-                            with Member() as m4:
-                                m4.insert_member(member, member, name, level, model)
-                                send_remind(f'添加会员：{member}, {member}, {name}', record.sender)
-                        else:
-                            send_remind(f'添加会员出错2：{record.id} - 无该好友：{record.content}', record.sender)
+                        send_remind(f'添加会员出错2：{record.id} - 无该好友：{record.content}', record.sender)
         except Exception as e:
             send_remind(f'添加会员出错3：{record.id} - {record.content} - {e}', record.sender)
                         
