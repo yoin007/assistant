@@ -421,6 +421,8 @@ async def insert_member(record):
     """
     插入会员信息
     :param record: 会员信息
+    支持添加会员时，指定level和model
+    示例：添加会员: abc-10-lesson
     """
     level = 5
     model = 'basic'
