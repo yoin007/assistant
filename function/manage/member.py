@@ -226,6 +226,14 @@ class Member:
         self.__cursor__.execute("INSERT INTO member (uuid, wxid, alias, level, module, birthday, note) VALUES (?, ?, ?, ?, ?,'', ?)", (uuid, wxid, alias, level, model, note))
         self.__conn__.commit()
     
+    def delte_member(self, uuid):
+        """
+        删除会员信息
+        :param uuid: 会员uuid
+        """
+        self.__cursor__.execute("DELETE FROM member WHERE uuid =?", (uuid,))
+        self.__conn__.commit()
+    
     def member_info(self, uuid):
         """
         查询会员信息
@@ -471,6 +479,19 @@ async def insert_member(record):
                         send_remind(f'添加会员出错2：{record.id} - 无该好友：{record.content}', record.sender)
         except Exception as e:
             send_remind(f'添加会员出错3：{record.id} - {record.content} - {e}', record.sender)
+
+async def del_member(record):
+    """
+    删除会员信息
+    :param record: 消息记录
+    """
+    member_str = record.content.replace('删除会员', '').replace('：', ':').replace(' ', '').split(':')[1]
+    member_list = member_str.split(',')
+    for member in member_list:
+        with Member() as m:
+            m.delte_member(member)
+            send_remind(f'删除会员：{member}', record.sender)
+    return None
                         
 def check_permission(func):
     async def wrapper(record, *args, **kwargs):
