@@ -507,12 +507,14 @@ async def query_members(record):
     查询会员信息
     :param record: 消息记录
     """
-    tips = '会员信息：\n'
+    tips = ''
     with Member() as m:
         members = m.members()
         if members:
+            cnts = len(members)
+            tips += f'当前共{cnts}个会员\n'
             for member in members:
-                tips += f'wxid：{member[1]}, alias：{member[2]}, level：{member[3]}, module：{member[4]}\n'
+                tips += f'wxid：{member[1]}, alias：{member[2]}, level：{member[5]}, module：{member[6]}\n'
             send_remind(tips, record.sender)
         else:
             send_remind('查询会员失败：无会员信息', record.sender)
