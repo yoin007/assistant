@@ -244,6 +244,15 @@ class Member:
         result = self.__cursor__.fetchone()
         result = result if result else None
         return result
+    
+    def members(self):
+        """
+        查询所有会员信息
+        :return: 会员信息
+        """
+        self.__cursor__.execute("SELECT * FROM member")
+        result = self.__cursor__.fetchall()
+        return result if result else None
 
     # -------------------------table: score---------------------------------
     def event_score(self, uuid, event, left_score):
@@ -492,7 +501,23 @@ async def del_member(record):
             m.delte_member(member)
             send_remind(f'删除会员：{member}', record.sender)
     return None
-                        
+
+async def query_members(record):
+    """
+    查询会员信息
+    :param record: 消息记录
+    """
+    tips = '会员信息：\n'
+    with Member() as m:
+        members = m.members()
+        if members:
+            for member in members:
+                tips += f'wxid：{member[1]}, alias：{member[2]}, level：{member[3]}, module：{member[4]}\n'
+            send_remind(tips, record.sender)
+        else:
+            send_remind('查询会员失败：无会员信息', record.sender)
+    return None
+
 def check_permission(func):
     async def wrapper(record, *args, **kwargs):
         if has_permission(func, record, *args, **kwargs):
