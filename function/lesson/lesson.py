@@ -17,6 +17,7 @@ import requests
 from config.config import Config
 from config.log import LogConfig
 from sendqueue import QueueDB
+from function.manage.member import check_permission
 
 log = LogConfig().get_logger()
 
@@ -1010,6 +1011,7 @@ class Lesson:
             html_code = f.read()
 
         hti = Html2Image()
+        hti.browser.flags = ['--headless=new']
 
         hti.size = (1440, 35 * lines + 50)
         hti.output_path = os.path.join(self.lesson_dir, 'temp')
@@ -1334,7 +1336,7 @@ async def update_schedule_all(record: any):
                 for wxid in wxids:
                     send_image(class_pic, wxid, 'lesson')
 
-
+@check_permission
 async def teacher_schedule(record: any):
     """
     获取老师(班级)课表
@@ -1400,7 +1402,7 @@ async def teacher_schedule(record: any):
             df_png = l.df_to_png(df, f'{wxid}.png', title=title)[0]
             send_image(df_png, wxid, 'lesson')
 
-
+@check_permission
 async def get_current_schedule(record: any):
     content = record.content
     wxid = record.roomid
@@ -1456,13 +1458,13 @@ async def refresh_schedule(record=None):
         wxid = l.admin[0]
     send_today_schedule(today_df, wxid)
 
-
+@check_permission
 async def get_today_schedule(record: any):
     l = Lesson()
     today_df = l.today_schedule()
     send_today_schedule(today_df, record.roomid)
 
-
+@check_permission
 async def get_current_teacher(record: any):
     l = Lesson()
     teachers = l.current_schedule()
@@ -1518,13 +1520,13 @@ def today_teachers():
             # print(wxid, tips)
             send_remind(tips, wxid)
 
-
+@check_permission
 async def current_week_info(record: any):
     l = Lesson()
     week_info = l.week_info
     send_remind(str(week_info), record.roomid)
 
-
+@check_permission
 async def get_ip_info(record: any):
     content = record.content
     if content == '我的上网信息':
@@ -1599,6 +1601,7 @@ async def mass_message(record: any):
             os.chmod(response_path, 0o777)
             group_send(response_path, record.roomid)
 
+@check_permission
 async def guide_template(record: any):
     l = Lesson()
     lesson_dir = l.lesson_dir

@@ -473,21 +473,19 @@ async def insert_member(record):
             send_remind(f'添加会员出错3：{record.id} - {record.content} - {e}', record.sender)
                         
 def check_permission(func):
-    def wrapper(pos, record, *args, **kwargs):
-        if has_permission(pos, func, record, *args, **kwargs):
-            return func(record, *args, **kwargs)
+    async def wrapper(record, *args, **kwargs):
+        if has_permission(func, record, *args, **kwargs):
+            return await func(record, *args, **kwargs)
         else:
             log.warning(f"{record.id} - {func.__name__}：鉴权失败")
     return wrapper
         
-def has_permission(pos, func, record, *args, **kwargs):
+def has_permission(func, record, *args, **kwargs):
     """
     鉴权
-    :param pos: 位置参数， 调用时会多出一个参数
     :param func: 被装饰的函数
-    :param record: 
+    :param record: 消息记录
     """
-    print(pos)
     if record.is_group:
         uuid = record.sender + '#' + record.roomid
     else:
@@ -498,14 +496,15 @@ def has_permission(pos, func, record, *args, **kwargs):
         member_info = m.member_info(uuid)
         if member_info:
             if permission:
-                if permission[9] in member_info[6].split('/'):
-                    if int(member_info[5]) >= int(permission[10]):
+                print(permission)
+                if permission[10] in member_info[6].split('/'):
+                    if int(member_info[5]) >= int(permission[11]):
                         log.info(f"{record.id} - {func_name}：权限通过")
                         return True
                     else:
                         log.warning(f"{record.id} - {func_name}：{uuid}-会员等级不足")
                 else:
-                    log.warning(f"{uuid}-尚未开通 {permission[9]} 模块权限")
+                    log.warning(f"{uuid}-尚未开通 {permission[10]} 模块权限")
             else:
                 log.warning(f"{func_name} 尚未开启权限检测，请检查配置")
         else:
@@ -522,6 +521,7 @@ async def start_func(record: any):
         try:
             with Member() as m:
                 m.active_func(func_name)
+                send_remind(f"start_func: {func_name}", record.sender)
                 return True
         except Exception as e:
             log.error(f"start_func Failed: {e}")
@@ -537,6 +537,7 @@ async def stop_func(record: any):
         try:
             with Member() as m:
                 m.inactive_func(func_name)
+                send_remind(f"stop_func: {func_name}", record.sender)
                 return True
         except Exception as e:
             log.error(f"stop_func Failed: {e}")

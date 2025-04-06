@@ -8,6 +8,7 @@ import re
 from datetime import datetime
 from sendqueue import QueueDB
 from config.log import LogConfig
+from function.manage.member import check_permission
 
 log = LogConfig().get_logger()
 
@@ -156,7 +157,7 @@ class Homework:
             log.error('获取公告失败')
             raise e
 
-
+@check_permission
 async def incert_homework(record):
     """
     record.content='作业布置\n$班级：202401/202402\n$学科：地理\n$教师：李老师\n$内容：\n1.完成学案\n2.预习新课\n3.练习\n$上交日期：2024-12-12\n$预计用时：20\n$ 作业类型：日常'
@@ -191,6 +192,7 @@ async def incert_homework(record):
     else:
         send_remind('作业布置失败，请检查格式', record.roomid)
 
+@check_permission
 async def get_class_homework(record):
     """
     record.content='202401日常作业'
@@ -207,6 +209,7 @@ async def get_class_homework(record):
     send_remind(homework, record.roomid)
     n.__exit__(None, None, None)
 
+@check_permission
 async def incert_announcement(record):
     content = re.sub(r'(\n+)', '\n', record.content)
     content = re.sub(r':', '：', content)
