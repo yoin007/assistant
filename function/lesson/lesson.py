@@ -1605,9 +1605,13 @@ async def mass_message(record: any):
             group_send(response_path, record.roomid)
 
 @check_permission
-async def guide_template(record: any):
+async def file_template(record: any):
+    """
+    获取模板文件， 根据 file_template 文件配置 文件字典
+    """
+    file_name = record.content.replace('获取文件：', '').replace(' ','')
+    file_template_path = Config().get_config('file_template')[file_name]
     l = Lesson()
     lesson_dir = l.lesson_dir
-    # guide_file = os.path.join(lesson_dir, 'template', '导学案样稿.docx')
-    guide_file = os.path.join(lesson_dir, 'template', 'daoxuean.docx') # API发送文件不支持中文path
-    send_file(guide_file, record.roomid)
+    template_file = os.path.join(lesson_dir, 'template', file_template_path) # API发送文件不支持中文path
+    send_file(template_file, record.roomid)
