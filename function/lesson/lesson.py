@@ -175,6 +175,9 @@ class Lesson:
             return pd.DataFrame()
 
     def _load_contacts(self):
+        # TODO: 优化
+        # 次处的联系人为lesson模块的相关用户，当前方法时通过微信联系人的remark来区分
+        # 后续可以考虑在当前的基础上，与checkTemplate中的teachers进行合并比较，确保用户的准确性，避免因人员离职，备注问题导致的错误
         """加载联系人信息数据"""
         try:
             contacts = {}
@@ -1290,8 +1293,8 @@ async def update_schedule_all(record: any):
     content = record.content
     l = Lesson()
     contacts = l.contacts
-    class_leaders = l.class_template[['class_name', 'class_en']]
-    leaders_dict = dict(zip(class_leaders['class_name'], class_leaders['class_en']))
+    class_leaders = l.class_template[['class_name', 'class_en']] # 班级列表
+    leaders_dict = dict(zip(class_leaders['class_name'], class_leaders['class_en'])) # 班级-班级名称en
     teacher_name = re.match(r'^(.+?)\s*的课表$', content).group(1)
     if teacher_name == '更新所有人':
         # 通知所有老师
