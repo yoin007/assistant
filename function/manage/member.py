@@ -526,6 +526,7 @@ def check_permission(func):
             return await func(record, *args, **kwargs)
         else:
             log.warning(f"{record.id} - {func.__name__}：鉴权失败")
+            return None
     return wrapper
         
 def has_permission(func, record, *args, **kwargs):
@@ -550,13 +551,13 @@ def has_permission(func, record, *args, **kwargs):
                         log.info(f"{record.id} - {func_name}：权限通过")
                         return True
                     else:
-                        log.warning(f"{record.id} - {func_name}：{uuid}-会员等级不足")
+                        send_remind(f"{record.id} - {func_name}：{uuid}-会员等级不足", record.roomid)
                 else:
-                    log.warning(f"{uuid}-尚未开通 {permission[10]} 模块权限")
+                    send_remind(f"{uuid}-尚未开通 {permission[10]} 模块权限", record.roomid)
             else:
-                log.warning(f"{func_name} 尚未开启权限检测，请检查配置")
+                send_remind(f"{func_name} 尚未开启权限检测，请检查配置", record.roomid)
         else:
-            log.warning(f"{uuid} 尚未开通会员")
+            send_remind(f"{uuid} 尚未开通会员", record.roomid)
     return False
 
 async def start_func(record: any):
