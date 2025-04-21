@@ -1348,6 +1348,10 @@ async def teacher_schedule(record: any):
     3. 获取班级课表：高一3班的课表
     """
     content = record.content
+    today = datetime.today().weekday()
+    if today == 6:
+        if '下周' not in content:
+            content = content.replace('的', '下周的')
     if len(content) > 9:
         return
     wxid = record.roomid
@@ -1408,6 +1412,10 @@ async def teacher_schedule(record: any):
 @check_permission
 async def get_current_schedule(record: any):
     content = record.content
+    today = datetime.today().weekday()
+    if today == 6:
+        if '下周' not in content:
+            content = content.replace('当前', '下周')
     wxid = record.roomid
     l = Lesson()
     schedule_file = ''
