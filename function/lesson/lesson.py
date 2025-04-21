@@ -1027,6 +1027,8 @@ class Lesson:
             current_schedule_file = self.current_schedule_file(week_next=True)
         else:
             current_schedule_file = self.current_schedule_file()
+        if current_schedule_file == '':
+            return pa.DataFrame() 
         df = pd.read_excel(current_schedule_file, engine='openpyxl')
         df_subject = self.repalce_subject_teacher(
             df, teacher_flag=False, week_next=week_next)
@@ -1573,16 +1575,25 @@ def group_send(xlsx_file, sender):
                     week_next = False
                     if row['消息内容'] == '下周课表':
                         week_next = True 
-                    df = l.get_teacher_schedule(teacher_name, week_next=week_next)
-                    if df.empty:
-                        send_remind(f'{teacher_name}的课表不存在', wxid)
-                    else:
-                        if week_next:
-                            title = f'{teacher_name}下周的课表'
+                    if teacher_name[0] == '高' and teacher_name[-1] == '班':
+                        class_df = l.get_class_schedule(teacher_name, week_next=week_next)
+                        df_png = l.df_to_png(
+                            class_df, f'{wxid}.png', title=f'{teacher_name}的课表')[0]
+                        if not df_png:
+                            send_remind(f'{teacher_name}的课表不存在', wxid)
                         else:
-                            title = f'{teacher_name}的课表'
-                        df_png = l.df_to_png(df, f'{wxid}.png', title=title)[0]
-                        send_image(df_png, wxid, 'lesson')
+                            send_image(df_png, wxid, 'lesson')
+                    else:
+                        df = l.get_teacher_schedule(teacher_name, week_next=week_next)
+                        if df.empty:
+                            send_remind(f'{teacher_name}的课表不存在', wxid)
+                        else:
+                            if week_next:
+                                title = f'{teacher_name}下周的课表'
+                            else:
+                                title = f'{teacher_name}的课表'
+                            df_png = l.df_to_png(df, f'{wxid}.png', title=title)[0]
+                            send_image(df_png, wxid, 'lesson')
             cnt += 1
         except KeyError as e:
             log.error(f"KeyError: {str(e)}")
