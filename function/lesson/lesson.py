@@ -1565,8 +1565,24 @@ def group_send(xlsx_file, sender):
         try:
             wxids = l.get_wxids(name)
             for wxid in wxids:
-                send_remind(f"{row['消息内容']}", wxid)
-                log.info(f"{str(cnt)} {name} 已通知")
+                if row['类型'] == '消息':
+                    send_remind(f"{row['消息内容']}", wxid)
+                    log.info(f"{str(cnt)} {name} 已通知")
+                if row['类型'] == '课表':
+                    teacher_name = name
+                    week_next = False
+                    if row['消息内容'] == '下周课表':
+                        week_next = True 
+                    df = l.get_teacher_schedule(teacher_name, week_next=week_next)
+                    if df.empty:
+                        send_remind(f'{teacher_name}的课表不存在', wxid)
+                    else:
+                        if week_next:
+                            title = f'{teacher_name}下周的课表'
+                        else:
+                            title = f'{teacher_name}的课表'
+                        df_png = l.df_to_png(df, f'{wxid}.png', title=title)[0]
+                        send_image(df_png, wxid, 'lesson')
             cnt += 1
         except KeyError as e:
             log.error(f"KeyError: {str(e)}")
